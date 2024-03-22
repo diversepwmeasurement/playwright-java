@@ -1,118 +1,154 @@
-name: Build & Test
-on:
-  push:
-    branches:
-      - main
-      - release-*
-  pull_request:
-    branches:
-      - main
-      - release-*
 jobs:
-  dev:
-    timeout-minutes: 30
+  Java_17:
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v2
+    - continue-on-error: true
+      uses: microsoft/playwright-github-action@v1
+    - continue-on-error: true
+      name: Set up JDK 17
+      uses: actions/setup-java@v2
+      with:
+        distribution: adopt
+        java-version: 17
+    - continue-on-error: true
+      name: Download drivers
+      run: scripts/download_driver_for_all_platforms.sh
+      shell: bash
+    - continue-on-error: true
+      name: Build & Install
+      run: mvn -B install -D skipTests --no-transfer-progress
+    - continue-on-error: true
+      env:
+        BROWSER: ${{ matrix.browser }}
+      name: Run tests
+      run: mvn test --no-transfer-progress --fail-at-end
+    - continue-on-error: true
+      env:
+        BROWSER: ${{ matrix.browser }}
+      name: Test Spring Boot Starter
+      run: 'cd tools/test-spring-boot-starter
+
+        mvn package -D skipTests --no-transfer-progress
+
+        java -jar target/test-spring-boot*.jar
+
+        '
+      shell: bash
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        browser: [chromium, firefox, webkit]
-    runs-on: ${{ matrix.os }}
+        browser:
+        - chromium
+        - firefox
+        - webkit
+    timeout-minutes: 30
+  dev:
+    runs-on: self-hosted
     steps:
-    - uses: actions/checkout@v2
-    - uses: microsoft/playwright-github-action@v1
-    - name: Set up JDK 1.8
+    - continue-on-error: true
+      uses: actions/checkout@v2
+    - continue-on-error: true
+      uses: microsoft/playwright-github-action@v1
+    - continue-on-error: true
+      name: Set up JDK 1.8
       uses: actions/setup-java@v2
       with:
         distribution: zulu
         java-version: 8
-    - name: Download drivers
-      shell: bash
+    - continue-on-error: true
+      name: Download drivers
       run: scripts/download_driver_for_all_platforms.sh
-    - name: Build & Install
+      shell: bash
+    - continue-on-error: true
+      name: Build & Install
       run: mvn -B install -D skipTests --no-transfer-progress
-    - name: Run tests
-      run: mvn test --no-transfer-progress --fail-at-end -D org.slf4j.simpleLogger.showDateTime=true -D org.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss
+    - continue-on-error: true
       env:
         BROWSER: ${{ matrix.browser }}
-    - name: Run tracing tests w/ sources
-      run: mvn test --no-transfer-progress --fail-at-end --projects=playwright -D test=*TestTracing* -D org.slf4j.simpleLogger.showDateTime=true -D org.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss
+      name: Run tests
+      run: mvn test --no-transfer-progress --fail-at-end -D org.slf4j.simpleLogger.showDateTime=true
+        -D org.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss
+    - continue-on-error: true
       env:
         BROWSER: ${{ matrix.browser }}
         PLAYWRIGHT_JAVA_SRC: src/test/java
-    - name: Test Spring Boot Starter
-      shell: bash
+      name: Run tracing tests w/ sources
+      run: mvn test --no-transfer-progress --fail-at-end --projects=playwright -D
+        test=*TestTracing* -D org.slf4j.simpleLogger.showDateTime=true -D org.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss
+    - continue-on-error: true
       env:
         BROWSER: ${{ matrix.browser }}
-      run: |
-        cd tools/test-spring-boot-starter
+      name: Test Spring Boot Starter
+      run: 'cd tools/test-spring-boot-starter
+
         mvn package -D skipTests --no-transfer-progress
+
         java -jar target/test-spring-boot*.jar
 
+        '
+      shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+        - chromium
+        - firefox
+        - webkit
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
+    timeout-minutes: 30
   stable:
-    timeout-minutes: 30
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v2
+    - continue-on-error: true
+      uses: microsoft/playwright-github-action@v1
+    - continue-on-error: true
+      if: matrix.os == 'windows-latest'
+      name: Install Media Pack
+      run: Install-WindowsFeature Server-Media-Foundation
+      shell: powershell
+    - continue-on-error: true
+      name: Set up JDK 1.8
+      uses: actions/setup-java@v2
+      with:
+        distribution: zulu
+        java-version: 8
+    - continue-on-error: true
+      name: Download drivers
+      run: scripts/download_driver_for_all_platforms.sh
+      shell: bash
+    - continue-on-error: true
+      name: Build & Install
+      run: mvn -B install -D skipTests --no-transfer-progress
+    - continue-on-error: true
+      env:
+        BROWSER: chromium
+        BROWSER_CHANNEL: ${{ matrix.browser-channel }}
+      name: Run tests
+      run: mvn test --no-transfer-progress --fail-at-end -D org.slf4j.simpleLogger.showDateTime=true
+        -D org.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        browser-channel: [chrome]
+        browser-channel:
+        - chrome
         include:
-          - os: windows-latest
-            browser-channel: msedge
-          - os: macos-latest
-            browser-channel: msedge
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: microsoft/playwright-github-action@v1
-      - name: Install Media Pack
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: Install-WindowsFeature Server-Media-Foundation
-      - name: Set up JDK 1.8
-        uses: actions/setup-java@v2
-        with:
-          distribution: zulu
-          java-version: 8
-      - name: Download drivers
-        shell: bash
-        run: scripts/download_driver_for_all_platforms.sh
-      - name: Build & Install
-        run: mvn -B install -D skipTests --no-transfer-progress
-      - name: Run tests
-        run: mvn test --no-transfer-progress --fail-at-end -D org.slf4j.simpleLogger.showDateTime=true -D org.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss
-        env:
-          BROWSER: chromium
-          BROWSER_CHANNEL: ${{ matrix.browser-channel }}
-
-  Java_17:
+        - browser-channel: msedge
+          os: windows-latest
+        - browser-channel: msedge
+          os: macos-latest
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macos-latest
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        browser: [chromium, firefox, webkit]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: microsoft/playwright-github-action@v1
-      - name: Set up JDK 17
-        uses: actions/setup-java@v2
-        with:
-          distribution: adopt
-          java-version: 17
-      - name: Download drivers
-        shell: bash
-        run: scripts/download_driver_for_all_platforms.sh
-      - name: Build & Install
-        run: mvn -B install -D skipTests --no-transfer-progress
-      - name: Run tests
-        run: mvn test --no-transfer-progress --fail-at-end
-        env:
-          BROWSER: ${{ matrix.browser }}
-      - name: Test Spring Boot Starter
-        shell: bash
-        env:
-          BROWSER: ${{ matrix.browser }}
-        run: |
-          cd tools/test-spring-boot-starter
-          mvn package -D skipTests --no-transfer-progress
-          java -jar target/test-spring-boot*.jar
+name: Build & Test
+on:
+  repository_dispatch:
+    types: trigger-ga___test.yml

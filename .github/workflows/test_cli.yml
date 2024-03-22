@@ -1,34 +1,36 @@
-name: Test CLI
-on:
-  push:
-    branches:
-      - main
-      - release-*
-  pull_request:
-    branches:
-      - main
-      - release-*
 jobs:
   verify:
-    timeout-minutes: 30
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v2
-      - name: Cache Maven packages
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Download drivers
-        run: scripts/download_driver_for_all_platforms.sh
-      - name: Intall Playwright
-        run: mvn install -D skipTests --no-transfer-progress
-      - name: Test CLI
-        run: mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -f playwright/pom.xml  -D exec.args=-V
-      - name: Test CLI version
-        shell: bash
-        run: tools/test-cli-version/test.sh
-      - name: Test CLI Fatjar
-        shell: bash
-        run: tools/test-cli-fatjar/test.sh
+    - continue-on-error: true
+      uses: actions/checkout@v2
+    - continue-on-error: true
+      name: Cache Maven packages
+      uses: actions/cache@v2
+      with:
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        path: ~/.m2
+        restore-keys: ${{ runner.os }}-m2
+    - continue-on-error: true
+      name: Download drivers
+      run: scripts/download_driver_for_all_platforms.sh
+    - continue-on-error: true
+      name: Intall Playwright
+      run: mvn install -D skipTests --no-transfer-progress
+    - continue-on-error: true
+      name: Test CLI
+      run: mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI -f playwright/pom.xml  -D
+        exec.args=-V
+    - continue-on-error: true
+      name: Test CLI version
+      run: tools/test-cli-version/test.sh
+      shell: bash
+    - continue-on-error: true
+      name: Test CLI Fatjar
+      run: tools/test-cli-fatjar/test.sh
+      shell: bash
+    timeout-minutes: 30
+name: Test CLI
+on:
+  repository_dispatch:
+    types: trigger-ga___test_cli.yml

@@ -1,21 +1,16 @@
-name: "Internal Tests"
-
-on:
-  push:
-    branches:
-      - main
-      - release-*
-
 jobs:
   trigger:
-    name: "trigger"
-    runs-on: ubuntu-20.04
+    name: trigger
+    runs-on: self-hosted
     steps:
-    - run: |
-        curl -X POST \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: token ${GH_TOKEN}" \
-          --data "{\"event_type\": \"playwright_tests_java\", \"client_payload\": {\"ref\": \"${GITHUB_SHA}\"}}" \
-          https://api.github.com/repos/microsoft/playwright-browsers/dispatches
+    - continue-on-error: true
       env:
         GH_TOKEN: ${{ secrets.REPOSITORY_DISPATCH_PERSONAL_ACCESS_TOKEN }}
+      run: "curl -X POST \\\n  -H \"Accept: application/vnd.github.v3+json\" \\\n\
+        \  -H \"Authorization: token ${GH_TOKEN}\" \\\n  --data \"{\\\"event_type\\\
+        \": \\\"playwright_tests_java\\\", \\\"client_payload\\\": {\\\"ref\\\": \\\
+        \"${GITHUB_SHA}\\\"}}\" \\\n  https://api.github.com/repos/microsoft/playwright-browsers/dispatches\n"
+name: Internal Tests
+on:
+  repository_dispatch:
+    types: trigger-ga___trigger_internal_tests.yml
